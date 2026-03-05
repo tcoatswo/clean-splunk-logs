@@ -1,6 +1,6 @@
 # Splunk Journal ZST Processor (AWS Lambda)
 
-This AWS Lambda function automatically processes compressed Splunk journal files (`journal.zst`) uploaded to an Amazon S3 bucket. It decompresses the files using Zstandard, extracts and validates the underlying JSON data, and saves the formatted JSON back to the S3 bucket.
+This AWS Lambda function automatically processes compressed Splunk journal files (`journal.zst`) uploaded to an Amazon S3 bucket. It decompresses the files using Zstandard, extracts and validates the underlying JSON data, and saves the formatted JSON back to the S3 bucket. This is specifically designed to strip proprietary binary data from .zst files, yielding clean JSON output.
 
 ## Features
 
