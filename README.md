@@ -7,16 +7,16 @@ This is specifically designed to strip proprietary binary data from .zst files, 
 ## Features
 
 * **Automated Triggering:** Runs automatically via S3 PutObject events.
-* **Streaming Decompression:** Uses memory-efficient streaming to decompress `.zst` files without overloading Lambda memory limits.
-* **Robust Data Extraction:** Includes fallback mechanisms (Regex and line-by-line parsing) to scrub binary artifacts and extract valid JSON payloads.
+* **Zstandard Decompression:** Decompresses `.zst` files and falls back to scanning the raw file if decompression fails.
+* **Robust Data Extraction:** Removes control bytes and finds the first valid JSON object, including nested objects and braces inside strings.
 * **Smart Routing:** Parses the internal JSON to generate dynamic, descriptive output filenames based on `eventName` and `eventSource`.
-* **Self-Cleaning:** Cleans up temporary files in `/tmp/` to prevent storage exhaustion on warm Lambda starts.
+* **Safe Logging and Cleanup:** Logs file metadata without JSON previews and removes temporary files after success or failure.
 
 ## Prerequisites
 
 * AWS Account with permissions to create Lambda functions, IAM roles, and S3 buckets.
-* Python 3.8+ runtime environment.
-* The `zstandard` Python package (must be bundled with your deployment package or added as a Lambda Layer).
+* A supported Python Lambda runtime.
+* The `zstandard` Python package (bundled with your deployment package or added as a Lambda Layer).
 
 ## Environment Variables
 
@@ -28,15 +28,19 @@ You can configure the behavior of the Lambda function using the following enviro
 
 ## Deployment Instructions
 
-1. **Package the Code:** Because this script relies on the external `zstandard` library, you must package the dependency with your code. 
+1. **Package the Code:** Build the dependency on an environment compatible with your Lambda runtime and architecture.
    ```bash
-   pip install zstandard -t .
-   zip -r function.zip .
-
-1. **Create the Lambda Function:** Upload the `function.zip` to AWS Lambda and set the runtime to Python (e.g., Python 3.12). Set the handler to `lambda_function.lambda_handler` (assuming your file is named `lambda_function.py`).
-2. **Configure S3 Trigger:** Go to your S3 bucket and configure an Event Notification to trigger this Lambda function on `s3:ObjectCreated:*` events. 
+   mkdir package
+   pip install -r requirements.txt -t package
+   cp zst_to_json.py package/
+   cd package && zip -r ../function.zip .
+   ```
+2. **Create the Lambda Function:** Upload `function.zip` to AWS Lambda and set the handler to `zst_to_json.lambda_handler`.
+3. **Configure S3 Trigger:** Go to your S3 bucket and configure an Event Notification to trigger this Lambda function on `s3:ObjectCreated:*` events.
    > **Tip:** Add a suffix filter for `.zst` to prevent the Lambda from triggering unnecessarily.
-3. **Adjust Timeout and Memory:** Decompressing and processing large files can take time. Increase the Lambda timeout (e.g., to 1-5 minutes) and memory (e.g., 512 MB or 1024 MB) depending on your expected file sizes.
+4. **Adjust Timeout, Memory, and Temporary Storage:** The function holds the downloaded file and decompressed text in memory while extracting JSON. Size these settings for your largest expected journal, and test with representative files.
+
+Run the unit tests with `python -m unittest discover -s tests` after installing `requirements.txt` and `boto3` locally.
 
 ## AWS IAM Permissions
 
